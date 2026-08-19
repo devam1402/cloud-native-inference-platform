@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://helm.cilium.io
+    chart: cilium
+    targetRevision: 1.20.1
+    helm:
+      values: |
+        gke:
+          enabled: true
+        ipam:
+          mode: kubernetes
+        ipv4NativeRoutingCIDR: "10.4.0.0/14"
+        nodeinit:
+          enabled: true
+          reconfigureKubelet: true
+          removeCbrBridge: true
+        cni:
+          binPath: /home/kubernetes/bin
+        kubeProxyReplacement: true
+        hubble:
+          enabled: true
+          relay:
+            enabled: true
+          ui:
+            enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
