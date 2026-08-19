@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: asia-south1-docker.pkg.dev/gold-courage-498911-e4/cnip-images/operator
-  newTag: v0.1.0
+  newTag: v0.1.1
