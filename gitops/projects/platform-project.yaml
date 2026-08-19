@@ -7,6 +7,7 @@ spec:
   description: Cloud-native inference platform — core apps and infra
   sourceRepos:
     - 'https://github.com/devam1402/cloud-native-inference-platform.git'
+    - 'https://helm.cilium.io'
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc
@@ -19,6 +20,8 @@ spec:
       kind: ClusterRoleBinding
     - group: ''
       kind: Namespace
+    - group: 'cilium.io'
+      kind: '*'
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
