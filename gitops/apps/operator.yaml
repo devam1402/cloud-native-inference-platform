@@ -11,7 +11,7 @@ spec:
     path: operator/config/default
   destination:
     server: https://kubernetes.default.svc
-    namespace: cnip-system
+    namespace: operator-system
   syncPolicy:
     automated:
       prune: true
