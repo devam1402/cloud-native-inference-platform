@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnip-operator
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/devam1402/cloud-native-inference-platform.git
+    targetRevision: main
+    path: operator/config/default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnip-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,3 @@
+NAME                                  STATUS   ROLES    AGE     VERSION               INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                             KERNEL-VERSION   CONTAINER-RUNTIME
+gke-cnip-gke-platform-01bed97e-rkph   Ready    <none>   2m28s   v1.35.6-gke.1641000   10.0.0.15     <none>        Container-Optimized OS from Google   6.12.85+         containerd://2.1.7
+gke-cnip-gke-system-3e11ca82-zk9s     Ready    <none>   44h     v1.35.6-gke.1641000   10.0.0.14     <none>        Container-Optimized OS from Google   6.12.85+         containerd://2.1.7

@@ -1,0 +1,17 @@
+NAMESPACE     NAME                                      TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)                      AGE
+argocd        argocd-applicationset-controller          ClusterIP   10.8.5.32     <none>        7000/TCP,8080/TCP            20h
+argocd        argocd-dex-server                         ClusterIP   10.8.5.110    <none>        5556/TCP,5557/TCP,5558/TCP   20h
+argocd        argocd-metrics                            ClusterIP   10.8.13.132   <none>        8082/TCP                     20h
+argocd        argocd-notifications-controller-metrics   ClusterIP   10.8.3.222    <none>        9001/TCP                     20h
+argocd        argocd-redis                              ClusterIP   10.8.9.234    <none>        6379/TCP                     20h
+argocd        argocd-repo-server                        ClusterIP   10.8.10.21    <none>        8081/TCP,8084/TCP            20h
+argocd        argocd-server                             ClusterIP   10.8.6.178    <none>        80/TCP,443/TCP               20h
+argocd        argocd-server-metrics                     ClusterIP   10.8.3.169    <none>        8083/TCP                     20h
+default       kubernetes                                ClusterIP   10.8.0.1      <none>        443/TCP                      45h
+gmp-system    alertmanager                              ClusterIP   None          <none>        9093/TCP                     45h
+gmp-system    gmp-operator                              ClusterIP   10.8.11.16    <none>        8443/TCP,443/TCP             45h
+gmp-system    rule-evaluator                            ClusterIP   10.8.10.150   <none>        19092/TCP                    45h
+kube-system   default-http-backend                      NodePort    10.8.7.170    <none>        80:31481/TCP                 45h
+kube-system   kube-dns                                  ClusterIP   10.8.0.10     <none>        53/UDP,53/TCP                45h
+kube-system   kube-dns-upstream                         ClusterIP   10.8.15.174   <none>        53/UDP,53/TCP                45h
+kube-system   metrics-server                            ClusterIP   10.8.8.75     <none>        443/TCP                      45h

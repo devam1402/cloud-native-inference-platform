@@ -1,0 +1,8 @@
+project_id   = "gold-courage-498911-e4"
+project_name = "cloud-native-inference-platform"
+environment  = "platform"
+region       = "asia-south1"
+zone         = "asia-south1-a"
+cluster_name = "cnip-gke"
+network_name = "cnip-vpc"
+subnet_name  = "cnip-gke-subnet"

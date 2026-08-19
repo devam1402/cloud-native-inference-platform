@@ -1,0 +1,35 @@
+NAMESPACE         NAME                                                READY   STATUS    RESTARTS      AGE     IP          NODE                                  NOMINATED NODE   READINESS GATES
+argocd            argocd-application-controller-0                     1/1     Running   0             20h     10.4.0.19   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+argocd            argocd-applicationset-controller-5869fbf6cf-7zjfg   1/1     Running   0             20h     10.4.0.13   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+argocd            argocd-dex-server-7d55bfc58-8rz4d                   1/1     Running   4 (20h ago)   20h     10.4.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+argocd            argocd-notifications-controller-76574f7fcd-96d7q    1/1     Running   0             20h     10.4.0.15   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+argocd            argocd-redis-78c4b6647d-47q9j                       1/1     Running   0             20h     10.4.0.16   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+argocd            argocd-repo-server-7df895d8f4-pr26x                 1/1     Running   0             3m30s   10.4.1.2    gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+argocd            argocd-server-5df668db89-fl7gx                      1/1     Running   0             3m32s   10.4.1.3    gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+gke-managed-cim   kube-state-metrics-0                                2/2     Running   0             45h     10.4.0.9    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+gmp-system        collector-2hn2m                                     2/2     Running   0             2m28s   10.4.1.6    gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+gmp-system        collector-kz5zc                                     2/2     Running   0             44h     10.4.0.12   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+gmp-system        gmp-operator-76ddfcd67b-vn74f                       1/1     Running   0             45h     10.4.0.3    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       event-exporter-gke-664978bd86-fggl8                 2/2     Running   0             45h     10.4.0.4    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       fluentbit-gke-mrmdd                                 3/3     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       fluentbit-gke-v29rz                                 3/3     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       gke-metadata-server-96f78                           1/1     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       gke-metadata-server-nq98x                           1/1     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       gke-metrics-agent-5mpn5                             3/3     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       gke-metrics-agent-85s2d                             3/3     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       konnectivity-agent-79cd9446fc-97nnm                 2/2     Running   0             45h     10.4.0.5    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       konnectivity-agent-79cd9446fc-bkzh9                 2/2     Running   0             2m22s   10.4.1.4    gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       konnectivity-agent-autoscaler-54f6678fdb-b4jqw      1/1     Running   0             45h     10.4.0.6    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       kube-dns-77d469c9c9-h2h5f                           4/4     Running   0             2m21s   10.4.1.5    gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       kube-dns-77d469c9c9-qkgrx                           4/4     Running   0             45h     10.4.0.10   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       kube-dns-autoscaler-6cf8fb4ff8-f9nnm                1/1     Running   0             45h     10.4.0.11   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       kube-proxy-gke-cnip-gke-platform-01bed97e-rkph      1/1     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       kube-proxy-gke-cnip-gke-system-3e11ca82-zk9s        1/1     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       l7-default-backend-7c69658bfd-sptds                 1/1     Running   0             45h     10.4.0.2    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       metrics-server-v1.35.1-f6846b5f8-lrsf2              1/1     Running   0             45h     10.4.0.8    gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       netd-gspl9                                          3/3     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       netd-xlp69                                          3/3     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       node-local-dns-94w88                                2/2     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
+kube-system       node-local-dns-mrvqm                                2/2     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       pdcsi-node-2h6jw                                    3/3     Running   0             2m28s   10.0.0.15   gke-cnip-gke-platform-01bed97e-rkph   <none>           <none>
+kube-system       pdcsi-node-ftkkh                                    3/3     Running   0             44h     10.0.0.14   gke-cnip-gke-system-3e11ca82-zk9s     <none>           <none>
