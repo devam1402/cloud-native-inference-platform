@@ -29,11 +29,23 @@ type TenantReconciler struct {
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch
+// The three markers below don't correspond to anything this controller
+// reads directly — they exist because reconcileRBAC creates a Role that
+// grants tenants read access to pods/services/configmaps. Kubernetes'
+// RBAC escalation-prevention check blocks any actor from granting
+// permissions it doesn't itself hold, so the controller must hold a
+// superset of whatever it writes into tenant-facing RBAC objects.
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 
-// Reconcile runs each step sequentially and stops at the first failure —
-// namespace must succeed before quota is attempted, quota before RBAC,
-// so a namespace failure never cascades into secondary "namespace not
-// found" errors from every step downstream of it.
+// Reconcile stops at the first failure only for namespace/quota, since
+// nothing downstream can meaningfully exist without them. From there,
+// ServiceAccount, RBAC, and NetworkPolicy are reconciled independently —
+// a failure in one does not hide whether the others succeeded, so
+// status conditions reflect the true state of each resource rather
+// than a merged, ambiguous signal.
 func (r *TenantReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -44,26 +56,21 @@ func (r *TenantReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	nsErr := r.reconcileNamespace(ctx, &tenant)
 	if nsErr != nil {
-		_ = r.updateStatus(ctx, &tenant, nsErr, nil, nil, nil)
+		_ = r.updateStatus(ctx, &tenant, nsErr, nil, nil, nil, nil)
 		return ctrl.Result{}, nsErr
 	}
 
 	quotaErr := r.reconcileResourceQuota(ctx, &tenant)
 	if quotaErr != nil {
-		_ = r.updateStatus(ctx, &tenant, nil, quotaErr, nil, nil)
+		_ = r.updateStatus(ctx, &tenant, nil, quotaErr, nil, nil, nil)
 		return ctrl.Result{}, quotaErr
 	}
 
 	saErr := r.reconcileServiceAccount(ctx, &tenant)
+	rbacErr := r.reconcileRBAC(ctx, &tenant)
+	npErr := r.reconcileNetworkPolicy(ctx, &tenant)
 
-	// first-failure only, not concatenated — a single clear reason
-	// instead of two error strings smashed together
-	rbacErr := saErr
-	if rbacErr == nil {
-		rbacErr = r.reconcileRBAC(ctx, &tenant)
-	}
-
-	if err := r.updateStatus(ctx, &tenant, nil, nil, saErr, rbacErr); err != nil {
+	if err := r.updateStatus(ctx, &tenant, nil, nil, saErr, rbacErr, npErr); err != nil {
 		return ctrl.Result{}, err
 	}
 	if saErr != nil {
@@ -72,17 +79,19 @@ func (r *TenantReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if rbacErr != nil {
 		return ctrl.Result{}, rbacErr
 	}
+	if npErr != nil {
+		return ctrl.Result{}, npErr
+	}
 
 	log.Info("tenant reconciled", "tenant", tenant.Name)
 	return ctrl.Result{}, nil
 }
 
-// updateStatus is change-aware (via statusUnchanged, in controller_helpers.go)
-// and called at each failure point above with only the relevant error set —
-// nsErr/quotaErr/saErr/rbacErr default to nil for steps not yet attempted,
-// so partial reconciles report exactly what's known so far, not a false
-// pass on unattempted steps.
-func (r *TenantReconciler) updateStatus(ctx context.Context, t *platformv1alpha1.Tenant, nsErr, quotaErr, saErr, rbacErr error) error {
+// updateStatus is change-aware (via statusUnchanged) and reports each
+// resource's outcome as its own condition — ServiceAccountReady, RBACReady,
+// and NetworkPolicyReady are independent, so kubectl describe shows exactly
+// which resource is broken rather than one merged signal.
+func (r *TenantReconciler) updateStatus(ctx context.Context, t *platformv1alpha1.Tenant, nsErr, quotaErr, saErr, rbacErr, npErr error) error {
 	newConditions := append([]metav1.Condition{}, t.Status.Conditions...)
 
 	setCond := func(condType string, err error, okReason, failReason string) {
@@ -101,9 +110,11 @@ func (r *TenantReconciler) updateStatus(ctx context.Context, t *platformv1alpha1
 
 	setCond("NamespaceReady", nsErr, "NamespaceReconciled", "NamespaceError")
 	setCond("QuotaApplied", quotaErr, "QuotaReconciled", "QuotaError")
+	setCond("ServiceAccountReady", saErr, "ServiceAccountReconciled", "ServiceAccountError")
 	setCond("RBACReady", rbacErr, "RBACReconciled", "RBACError")
+	setCond("NetworkPolicyReady", npErr, "NetworkPolicyReconciled", "NetworkPolicyError")
 
-	ready := nsErr == nil && quotaErr == nil && saErr == nil && rbacErr == nil
+	ready := nsErr == nil && quotaErr == nil && saErr == nil && rbacErr == nil && npErr == nil
 	setCond("Accepted", nil, "TenantObserved", "")
 
 	var readyErr error

@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	platformv1alpha1 "github.com/devam1402/cloud-native-inference-platform/operator/api/v1alpha1"
@@ -165,6 +167,78 @@ func (r *TenantReconciler) reconcileRBAC(ctx context.Context, tenant *platformv1
 		return nil
 	})
 	return err
+}
+
+// reconcileNetworkPolicy enforces tenant isolation: deny by default,
+// with explicit exceptions for DNS and same-tenant traffic — the
+// network-layer equivalent of the RBAC/SubjectAccessReview isolation
+// already proven at the API layer.
+//
+// Not a pure default-deny policy: DNS and same-namespace-tenant traffic
+// are explicitly permitted. "tenant-isolation" names that accurately;
+// "default-deny" would overclaim.
+//
+// DNS is both UDP and TCP: NetworkPolicyPort defaults to TCP when
+// Protocol is omitted, and DNS is primarily UDP, so omitting the
+// protocol would silently break name resolution for every tenant pod.
+func (r *TenantReconciler) reconcileNetworkPolicy(ctx context.Context, tenant *platformv1alpha1.Tenant) error {
+	np := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "tenant-isolation", Namespace: tenant.Name},
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
+		if np.Labels == nil {
+			np.Labels = map[string]string{}
+		}
+		np.Labels[tenantLabelKey] = tenant.Name
+		np.Spec = networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{From: []networkingv1.NetworkPolicyPeer{
+					{NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{tenantLabelKey: tenant.Name},
+					}},
+					// TODO: once Gateway API is deployed, add a peer here
+					// allowing ingress from the gateway namespace — currently
+					// Gateway → tenant traffic would be denied, which is
+					// correct until the serving stack exists to receive it.
+				}},
+			},
+			Egress: []networkingv1.NetworkPolicyEgressRule{
+				{
+					To: []networkingv1.NetworkPolicyPeer{
+						{NamespaceSelector: &metav1.LabelSelector{}, PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{"k8s-app": "kube-dns"},
+						}},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: protoPtr(corev1.ProtocolUDP), Port: ptrIntOrString(53)},
+						{Protocol: protoPtr(corev1.ProtocolTCP), Port: ptrIntOrString(53)},
+					},
+				},
+				{
+					To: []networkingv1.NetworkPolicyPeer{
+						{NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{tenantLabelKey: tenant.Name},
+						}},
+					},
+				},
+				// NOTE (deferred): approved external egress (model registry,
+				// object storage) needs explicit CIDR/FQDN rules once those
+				// endpoints are known — arbitrary internet stays denied by
+				// omission until then.
+			},
+		}
+		return nil
+	})
+	return err
+}
+
+func protoPtr(p corev1.Protocol) *corev1.Protocol { return &p }
+
+func ptrIntOrString(i int32) *intstr.IntOrString {
+	v := intstr.FromInt32(i)
+	return &v
 }
 
 // statusUnchanged compares two condition slices for equality on the fields
