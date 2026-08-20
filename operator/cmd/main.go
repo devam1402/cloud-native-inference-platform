@@ -42,6 +42,7 @@ import (
 import (
 	platformv1alpha1 "github.com/devam1402/cloud-native-inference-platform/operator/api/v1alpha1"
 	"github.com/devam1402/cloud-native-inference-platform/operator/internal/controller"
+	platformwebhook "github.com/devam1402/cloud-native-inference-platform/operator/internal/webhook"
 )
 
 var (
@@ -220,7 +221,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}
-
+	// register admission webhooks
+	if err := platformwebhook.SetupInferenceServiceWebhook(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "InferenceServiceValidator")
+		os.Exit(1)
+	}
+	if err := platformwebhook.SetupInferenceServiceMutator(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "InferenceServiceMutator")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
