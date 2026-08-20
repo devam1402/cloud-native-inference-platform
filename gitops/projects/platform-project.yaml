@@ -23,6 +23,10 @@ spec:
       kind: Namespace
     - group: 'cilium.io'
       kind: '*'
+    - group: 'admissionregistration.k8s.io'
+      kind: MutatingWebhookConfiguration
+    - group: 'admissionregistration.k8s.io'
+      kind: ValidatingWebhookConfiguration
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
