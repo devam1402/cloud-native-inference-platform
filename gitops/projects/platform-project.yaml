@@ -8,6 +8,7 @@ spec:
   sourceRepos:
     - 'https://github.com/devam1402/cloud-native-inference-platform.git'
     - 'https://helm.cilium.io'
+    - 'https://charts.jetstack.io'
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc
