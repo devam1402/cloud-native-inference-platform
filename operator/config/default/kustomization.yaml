@@ -95,3 +95,25 @@ replacements:
           delimiter: '/'
           index: 1
           create: true
+  # The real bug fixed here: namePrefix only rewrites object names, not
+  # references between objects. The Issuer's own name correctly became
+  # operator-selfsigned-issuer, but the Certificate's issuerRef.name field
+  # is just a string value kustomize doesn't know to follow — it stayed
+  # "selfsigned-issuer" and pointed at nothing, so cert-manager silently
+  # never issued the cert (zero events on the Certificate object over 2
+  # days is the actual symptom this fixes).
+  - source:
+      kind: Issuer
+      group: cert-manager.io
+      version: v1
+      name: selfsigned-issuer
+      fieldPath: .metadata.name
+    targets:
+      - select:
+          kind: Certificate
+          group: cert-manager.io
+          version: v1
+        fieldPaths:
+          - .spec.issuerRef.name
+        options:
+          create: true
