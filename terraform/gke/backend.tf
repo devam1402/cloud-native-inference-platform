@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "cnip-tfstate-gold-courage"
+    bucket = "cnip-tfstate-v2"
     prefix = "gke"
   }
 }
