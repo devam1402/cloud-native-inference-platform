@@ -9,6 +9,9 @@ spec:
     repoURL: https://github.com/kubernetes-sigs/kueue.git
     targetRevision: v0.19.2
     path: config/default
+    kustomize:
+      images:
+        - us-central1-docker.pkg.dev/k8s-staging-images/kueue/kueue:v0.19.2
   destination:
     server: https://kubernetes.default.svc
     namespace: kueue-system
