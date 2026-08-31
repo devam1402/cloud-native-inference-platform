@@ -6,12 +6,11 @@ metadata:
 spec:
   project: platform
   source:
-    repoURL: https://github.com/kubernetes-sigs/kueue.git
-    targetRevision: v0.19.2
-    path: config/default
-    kustomize:
-      images:
-        - us-central1-docker.pkg.dev/k8s-staging-images/kueue/kueue:v0.19.2
+    repoURL: https://github.com/devam1402/cloud-native-inference-platform.git
+    targetRevision: main
+    path: gitops/vendor
+    directory:
+      include: 'kueue-v0.19.2-manifests.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: kueue-system
