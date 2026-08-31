@@ -31,7 +31,7 @@ func (m *InferenceServiceMutator) Default(ctx context.Context, obj runtime.Objec
 	return internaladmission.MutateInferenceService(ctx, m.Client, isvc)
 }
 
-// +kubebuilder:webhook:path=/mutate-platform-platform-io-v1alpha1-inferenceservice,mutating=true,failurePolicy=ignore,sideEffects=None,groups=platform.platform.io,resources=inferenceservices,verbs=create;update,versions=v1alpha1,name=minferenceservice.platform.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-platform-platform-io-v1alpha1-inferenceservice,mutating=true,failurePolicy=fail,sideEffects=None,groups=platform.platform.io,resources=inferenceservices,verbs=create;update,versions=v1alpha1,name=minferenceservice.platform.io,admissionReviewVersions=v1
 
 // SetupInferenceServiceMutator registers this defaulter with the manager.
 // Not called from anywhere yet — same gating as SetupInferenceServiceWebhook.

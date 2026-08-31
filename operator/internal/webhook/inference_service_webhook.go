@@ -57,12 +57,12 @@ func (v *InferenceServiceValidator) ValidateDelete(ctx context.Context, obj runt
 	return nil, nil
 }
 
-// +kubebuilder:webhook:path=/validate-platform-platform-io-v1alpha1-inferenceservice,mutating=false,failurePolicy=ignore,sideEffects=None,groups=platform.platform.io,resources=inferenceservices,verbs=create;update,versions=v1alpha1,name=vinferenceservice.platform.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-platform-platform-io-v1alpha1-inferenceservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=platform.platform.io,resources=inferenceservices,verbs=create;update,versions=v1alpha1,name=vinferenceservice.platform.io,admissionReviewVersions=v1
 
 // SetupInferenceServiceWebhook registers this validator with the manager.
 // Not called from anywhere yet — cmd/main.go wiring happens once
 // Certificate/Issuer manifests exist and the webhook is ready to
-// actually register against the live API server. failurePolicy=ignore
+// actually register against the live API server. failurePolicy=fail
 // here matches the safe rollout plan: flip to Fail only after a live
 // ALLOW/DENY test confirms the deployed webhook actually works.
 func SetupInferenceServiceWebhook(mgr ctrl.Manager) error {

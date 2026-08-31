@@ -11,7 +11,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /mutate-platform-platform-io-v1alpha1-inferenceservice
-  failurePolicy: Ignore
+  failurePolicy: Fail
   name: minferenceservice.platform.io
   rules:
   - apiGroups:
@@ -37,7 +37,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-platform-platform-io-v1alpha1-inferenceservice
-  failurePolicy: Ignore
+  failurePolicy: Fail
   name: vinferenceservice.platform.io
   rules:
   - apiGroups:
