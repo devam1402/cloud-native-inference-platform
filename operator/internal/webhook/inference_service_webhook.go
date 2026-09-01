@@ -57,6 +57,7 @@ func (v *InferenceServiceValidator) ValidateDelete(ctx context.Context, obj runt
 	return nil, nil
 }
 
+// +kubebuilder:rbac:groups=platform.platform.io,resources=platformpolicies,verbs=get;list;watch
 // +kubebuilder:webhook:path=/validate-platform-platform-io-v1alpha1-inferenceservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=platform.platform.io,resources=inferenceservices,verbs=create;update,versions=v1alpha1,name=vinferenceservice.platform.io,admissionReviewVersions=v1
 
 // SetupInferenceServiceWebhook registers this validator with the manager.

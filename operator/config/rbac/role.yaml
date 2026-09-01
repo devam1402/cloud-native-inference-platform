@@ -75,6 +75,14 @@ rules:
   - patch
   - update
 - apiGroups:
+  - platform.platform.io
+  resources:
+  - platformpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - rolebindings
