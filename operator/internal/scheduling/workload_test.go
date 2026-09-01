@@ -73,3 +73,29 @@ func TestBuildJob(t *testing.T) {
 		t.Errorf("expected interactive-class cpu request 500m, got %s", cpuReq.String())
 	}
 }
+
+func TestPriorityClassForWorkloadClass(t *testing.T) {
+	cases := map[string]string{
+		"interactive":   "platform-interactive",
+		"batch":         "platform-batch",
+		"background":    "platform-background",
+		"unknown-class": "platform-batch",
+	}
+	for class, want := range cases {
+		got := PriorityClassForWorkloadClass(class)
+		if got != want {
+			t.Errorf("%s: expected %s, got %s", class, want, got)
+		}
+	}
+}
+
+func TestBuildJob_PriorityClassLabel(t *testing.T) {
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "prio-test", Namespace: "finance", UID: types.UID("xyz")},
+		Spec:       platformv1alpha1.InferenceServiceSpec{WorkloadClass: "background"},
+	}
+	job := BuildJob(isvc, "finance-queue")
+	if job.Labels[KueuePriorityClassLabel] != "platform-background" {
+		t.Errorf("expected priority class label platform-background, got %s", job.Labels[KueuePriorityClassLabel])
+	}
+}

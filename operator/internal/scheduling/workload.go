@@ -15,6 +15,34 @@ import (
 // chance to gate it.
 const KueueQueueLabel = "kueue.x-k8s.io/queue-name"
 
+// KueuePriorityClassLabel is the label Kueue reads to determine a Job's
+// WorkloadPriorityClass — a fixed, named object with a numeric value,
+// not a raw per-object number. This is a deliberate design choice:
+// priority.Calculate() produces a continuous integer (0-1000+) suited to
+// human-readable API status, but Kueue's ordering mechanism expects a
+// small set of named tiers. PriorityClassForWorkloadClass below maps
+// the platform's existing three-tier workloadClass system onto three
+// WorkloadPriorityClass objects (platform-interactive/batch/background,
+// created once on the cluster) rather than inventing a second scheme.
+const KueuePriorityClassLabel = "kueue.x-k8s.io/priority-class"
+
+// PriorityClassForWorkloadClass returns the WorkloadPriorityClass name
+// for a given InferenceService workload class. Falls through to
+// platform-batch for an unrecognized class, matching CPURequest's
+// same fallback behavior.
+func PriorityClassForWorkloadClass(workloadClass string) string {
+	switch workloadClass {
+	case "interactive":
+		return "platform-interactive"
+	case "batch":
+		return "platform-batch"
+	case "background":
+		return "platform-background"
+	default:
+		return "platform-batch"
+	}
+}
+
 // BuildJob renders a Kueue-admissible batch/v1 Job for an InferenceService.
 // The Job's name matches the InferenceService's name so
 // TenantController-style CreateOrUpdate reconciliation stays idempotent —
@@ -26,6 +54,7 @@ const KueueQueueLabel = "kueue.x-k8s.io/queue-name"
 // create this automatically per Tenant, same as NetworkPolicy/RBAC).
 func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *batchv1.Job {
 	cpu, memory := CPURequest(isvc.Spec.WorkloadClass)
+	priorityClass := PriorityClassForWorkloadClass(isvc.Spec.WorkloadClass)
 
 	backoffLimit := int32(0) // don't retry — a failed InferenceService job should surface as failed, not silently retry
 	suspend := true          // Kueue unsuspends this once admitted; never start unsuspended
@@ -36,6 +65,7 @@ func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *b
 			Namespace: isvc.Namespace,
 			Labels: map[string]string{
 				KueueQueueLabel:                         localQueueName,
+				KueuePriorityClassLabel:                 priorityClass,
 				"platform.platform.io/inferenceservice": isvc.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
