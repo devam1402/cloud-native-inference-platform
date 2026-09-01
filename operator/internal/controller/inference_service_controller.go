@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -20,6 +22,7 @@ import (
 	"github.com/devam1402/cloud-native-inference-platform/operator/internal/capacityenvelope"
 	"github.com/devam1402/cloud-native-inference-platform/operator/internal/priority"
 	"github.com/devam1402/cloud-native-inference-platform/operator/internal/resourceprofile"
+	"github.com/devam1402/cloud-native-inference-platform/operator/internal/scheduling"
 )
 
 type InferenceServiceReconciler struct {
@@ -31,6 +34,7 @@ type InferenceServiceReconciler struct {
 // +kubebuilder:rbac:groups=platform.platform.io,resources=inferenceservices/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=platform.platform.io,resources=models,verbs=get;list;watch
 // +kubebuilder:rbac:groups=platform.platform.io,resources=tenants,verbs=get;list;watch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *InferenceServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -104,6 +108,14 @@ func (r *InferenceServiceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		// cases the watch doesn't cover (e.g. tenant/profile/capacity
 		// changes with no corresponding watch yet).
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
+	jobErr := r.reconcileKueueJob(ctx, &isvc)
+	if err := r.updateWorkloadCondition(ctx, &isvc, jobErr); err != nil {
+		return ctrl.Result{}, err
+	}
+	if jobErr != nil {
+		return ctrl.Result{}, jobErr
 	}
 
 	if changed {
@@ -199,4 +211,57 @@ func (r *InferenceServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Named("inferenceservice").
 		Complete(r)
+}
+
+// reconcileKueueJob creates or updates the Kueue-admissible Job backing
+// this InferenceService, once Model/Tenant/Profile/Capacity have all
+// resolved successfully. Kept separate from updateStatus's error-folding
+// pattern deliberately — WorkloadReady is reported as its own condition,
+// same "independent, own condition" discipline TenantController uses for
+// ServiceAccount/RBAC/NetworkPolicy, rather than complicating
+// updateStatus's signature for a concern that only applies once
+// everything else is already Ready.
+func (r *InferenceServiceReconciler) reconcileKueueJob(ctx context.Context, isvc *platformv1alpha1.InferenceService) error {
+	localQueueName := isvc.Namespace + "-queue" // matches the finance-queue/research-queue convention
+
+	desired := scheduling.BuildJob(isvc, localQueueName)
+	if err := controllerutil.SetControllerReference(isvc, desired, r.Scheme); err != nil {
+		return fmt.Errorf("setting owner reference on job: %w", err)
+	}
+
+	var existing batchv1.Job
+	err := r.Get(ctx, types.NamespacedName{Name: desired.Name, Namespace: desired.Namespace}, &existing)
+	if apierrors.IsNotFound(err) {
+		return r.Create(ctx, desired)
+	}
+	if err != nil {
+		return fmt.Errorf("getting existing job: %w", err)
+	}
+	// Job specs are largely immutable once created (pod template fields
+	// can't be patched after creation) — for P3's scope, an already-
+	// created Job is left alone rather than attempting an update that
+	// the API server would reject anyway.
+	return nil
+}
+
+func (r *InferenceServiceReconciler) updateWorkloadCondition(ctx context.Context, isvc *platformv1alpha1.InferenceService, jobErr error) error {
+	status := metav1.ConditionTrue
+	reason := "JobReconciled"
+	msg := ""
+	if jobErr != nil {
+		status = metav1.ConditionFalse
+		reason = "JobError"
+		msg = jobErr.Error()
+	}
+
+	newConditions := append([]metav1.Condition{}, isvc.Status.Conditions...)
+	meta.SetStatusCondition(&newConditions, metav1.Condition{
+		Type: "WorkloadReady", Status: status, Reason: reason, Message: msg,
+	})
+
+	if statusUnchanged(isvc.Status.Conditions, newConditions) {
+		return nil
+	}
+	isvc.Status.Conditions = newConditions
+	return r.Status().Update(ctx, isvc)
 }
