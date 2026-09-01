@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: asia-south1-docker.pkg.dev/cnip-platform-v2/cnip-images/operator
-  newTag: v0.2.1
+  newTag: v0.3.0
