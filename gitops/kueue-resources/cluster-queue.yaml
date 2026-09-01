@@ -1,0 +1,43 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: cpu-default
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: cnip-cluster-queue
+spec:
+  namespaceSelector: {}
+  preemption:
+    withinClusterQueue: LowerPriority
+  resourceGroups:
+  - coveredResources: ["cpu", "memory"]
+    flavors:
+    - name: cpu-default
+      resources:
+      - name: "cpu"
+        nominalQuota: 4
+      - name: "memory"
+        nominalQuota: 8Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-interactive
+value: 1000
+description: "Interactive InferenceServices — highest scheduling priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-batch
+value: 333
+description: "Batch InferenceServices — medium scheduling priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-background
+value: 100
+description: "Background InferenceServices — lowest scheduling priority"
