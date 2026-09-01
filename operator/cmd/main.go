@@ -221,6 +221,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}
+	if err := (&controller.InferenceServiceReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "InferenceService")
+		os.Exit(1)
+	}
+
 	// register admission webhooks
 	if err := platformwebhook.SetupInferenceServiceWebhook(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "InferenceServiceValidator")
