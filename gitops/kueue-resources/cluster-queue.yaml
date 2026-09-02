@@ -6,20 +6,46 @@ metadata:
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
-  name: cnip-cluster-queue
+  name: finance-cluster-queue
 spec:
+  cohortName: cnip-cohort
   namespaceSelector: {}
   preemption:
     withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Any
   resourceGroups:
   - coveredResources: ["cpu", "memory"]
     flavors:
     - name: cpu-default
       resources:
       - name: "cpu"
-        nominalQuota: 4
+        nominalQuota: 2
+        borrowingLimit: 2
       - name: "memory"
-        nominalQuota: 8Gi
+        nominalQuota: 4Gi
+        borrowingLimit: 4Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: research-cluster-queue
+spec:
+  cohortName: cnip-cohort
+  namespaceSelector: {}
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Any
+  resourceGroups:
+  - coveredResources: ["cpu", "memory"]
+    flavors:
+    - name: cpu-default
+      resources:
+      - name: "cpu"
+        nominalQuota: 2
+        borrowingLimit: 2
+      - name: "memory"
+        nominalQuota: 4Gi
+        borrowingLimit: 4Gi
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass
