@@ -59,6 +59,7 @@ func restrictedSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		AllowPrivilegeEscalation: &falseVal,
 		RunAsNonRoot:             &trueVal,
+		RunAsUser:                int64Ptr(1000),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
@@ -146,4 +147,5 @@ func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *b
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
+func boolPtr(b bool) *bool    { return &b }
+func int64Ptr(i int64) *int64 { return &i }

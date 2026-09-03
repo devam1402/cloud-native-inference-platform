@@ -129,4 +129,7 @@ func TestBuildJob_SatisfiesRestrictedPodSecurity(t *testing.T) {
 	if sc.SeccompProfile == nil || sc.SeccompProfile.Type != "RuntimeDefault" {
 		t.Error("expected container seccompProfile.type=RuntimeDefault")
 	}
+	if sc.RunAsUser == nil || *sc.RunAsUser == 0 {
+		t.Error("expected non-zero runAsUser — busybox defaults to root and RunAsNonRoot alone is not enough")
+	}
 }
