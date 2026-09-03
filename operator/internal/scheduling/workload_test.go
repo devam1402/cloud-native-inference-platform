@@ -99,3 +99,34 @@ func TestBuildJob_PriorityClassLabel(t *testing.T) {
 		t.Errorf("expected priority class label platform-background, got %s", job.Labels[KueuePriorityClassLabel])
 	}
 }
+
+func TestBuildJob_SatisfiesRestrictedPodSecurity(t *testing.T) {
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "sec-test", Namespace: "finance", UID: types.UID("sec-1")},
+		Spec:       platformv1alpha1.InferenceServiceSpec{WorkloadClass: "interactive"},
+	}
+	job := BuildJob(isvc, "finance-queue")
+
+	podSpec := job.Spec.Template.Spec
+	if podSpec.SecurityContext == nil || podSpec.SecurityContext.SeccompProfile == nil {
+		t.Fatal("expected pod-level seccompProfile to satisfy restricted Pod Security Standard")
+	}
+
+	container := podSpec.Containers[0]
+	sc := container.SecurityContext
+	if sc == nil {
+		t.Fatal("expected container securityContext to be set")
+	}
+	if sc.AllowPrivilegeEscalation == nil || *sc.AllowPrivilegeEscalation {
+		t.Error("expected allowPrivilegeEscalation=false")
+	}
+	if sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot {
+		t.Error("expected runAsNonRoot=true")
+	}
+	if sc.Capabilities == nil || len(sc.Capabilities.Drop) != 1 || sc.Capabilities.Drop[0] != "ALL" {
+		t.Error("expected capabilities.drop=[ALL]")
+	}
+	if sc.SeccompProfile == nil || sc.SeccompProfile.Type != "RuntimeDefault" {
+		t.Error("expected container seccompProfile.type=RuntimeDefault")
+	}
+}

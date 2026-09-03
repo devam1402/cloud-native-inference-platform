@@ -43,6 +43,31 @@ func PriorityClassForWorkloadClass(workloadClass string) string {
 	}
 }
 
+// restrictedSecurityContext satisfies the "restricted" Pod Security
+// Standard, which every tenant namespace enforces (TenantController sets
+// pod-security.kubernetes.io/enforce=restricted). Without this, every
+// Pod the Job controller tries to create is silently rejected and
+// retried forever — the Job and its Kueue Workload both look healthy
+// (Running/Admitted) even though zero Pods ever actually start. That
+// bug was live undetected through the whole priority/preemption/fairness
+// proof sequence, since Kueue reserves quota at Workload-admission time,
+// independent of whether the underlying Pod can start — the scheduling
+// layer was genuinely correct throughout; only Pod execution was broken.
+func restrictedSecurityContext() *corev1.SecurityContext {
+	falseVal := false
+	trueVal := true
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: &falseVal,
+		RunAsNonRoot:             &trueVal,
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
 // BuildJob renders a Kueue-admissible batch/v1 Job for an InferenceService.
 // The Job's name matches the InferenceService's name so
 // TenantController-style CreateOrUpdate reconciliation stays idempotent —
@@ -89,14 +114,20 @@ func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *b
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					SecurityContext: &corev1.PodSecurityContext{
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							// Placeholder workload — a real serving container
 							// (vLLM, TGI, etc.) is P3.5/inference-serving scope.
 							// This proves scheduling semantics, not serving.
-							Name:    "placeholder",
-							Image:   "busybox:1.36",
-							Command: []string{"sleep", "30"},
+							Name:            "placeholder",
+							Image:           "busybox:1.36",
+							Command:         []string{"sleep", "30"},
+							SecurityContext: restrictedSecurityContext(),
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    cpu,
