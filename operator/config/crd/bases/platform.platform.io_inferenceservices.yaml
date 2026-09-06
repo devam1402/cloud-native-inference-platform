@@ -49,6 +49,16 @@ spec:
               priority:
                 format: int32
                 type: integer
+              replicas:
+                description: |-
+                  Replicas is the number of pods this workload needs, admitted
+                  atomically as a gang by Kueue — either all Replicas get quota
+                  reserved and start together, or none do. Defaults to 1 (a single
+                  pod, the existing behavior) when unset, so every InferenceService
+                  created before this field existed keeps working unchanged.
+                format: int32
+                minimum: 1
+                type: integer
               resourceProfile:
                 type: string
               slo:

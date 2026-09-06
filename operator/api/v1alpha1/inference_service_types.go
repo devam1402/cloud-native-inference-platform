@@ -21,6 +21,14 @@ type InferenceServiceSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=stateless;cache-affine;session-affine;long-generation
 	Statefulness string `json:"statefulness,omitempty"`
+	// +optional
+	// Replicas is the number of pods this workload needs, admitted
+	// atomically as a gang by Kueue — either all Replicas get quota
+	// reserved and start together, or none do. Defaults to 1 (a single
+	// pod, the existing behavior) when unset, so every InferenceService
+	// created before this field existed keeps working unchanged.
+	// +kubebuilder:validation:Minimum=1
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// +optional
 	SLO InferenceSLO `json:"slo,omitempty"`

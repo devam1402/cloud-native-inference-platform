@@ -43,6 +43,20 @@ func PriorityClassForWorkloadClass(workloadClass string) string {
 	}
 }
 
+// ReplicaCount returns the InferenceService's requested replica count,
+// defaulting to 1 when Replicas is unset — preserving the exact
+// single-pod behavior every InferenceService had before this field
+// existed.
+func ReplicaCount(isvc *platformv1alpha1.InferenceService) int32 {
+	if isvc.Spec.Replicas == nil {
+		return 1
+	}
+	if *isvc.Spec.Replicas < 1 {
+		return 1
+	}
+	return *isvc.Spec.Replicas
+}
+
 // restrictedSecurityContext satisfies the "restricted" Pod Security
 // Standard, which every tenant namespace enforces (TenantController sets
 // pod-security.kubernetes.io/enforce=restricted). Without this, every
@@ -53,6 +67,10 @@ func PriorityClassForWorkloadClass(workloadClass string) string {
 // proof sequence, since Kueue reserves quota at Workload-admission time,
 // independent of whether the underlying Pod can start — the scheduling
 // layer was genuinely correct throughout; only Pod execution was broken.
+// runAsUser is required in addition to runAsNonRoot: busybox's image
+// defaults to root, and runAsNonRoot alone doesn't pick a non-root user
+// for an image that has no non-root default — without an explicit
+// runAsUser the kubelet rejects the container with CreateContainerConfigError.
 func restrictedSecurityContext() *corev1.SecurityContext {
 	falseVal := false
 	trueVal := true
@@ -74,6 +92,13 @@ func restrictedSecurityContext() *corev1.SecurityContext {
 // TenantController-style CreateOrUpdate reconciliation stays idempotent —
 // re-running this on an unchanged InferenceService produces the same Job.
 //
+// Gang scheduling: Completions and Parallelism are both set to the same
+// replica count. Kueue's batch/job integration treats a Job's
+// parallelism as the gang size — it reserves quota for every pod in the
+// gang before admitting any of them, and only starts the Job once the
+// full gang's worth of capacity is available. A Job that needs 4 pods
+// never gets 2 running and 2 stuck pending; it's genuinely all-or-nothing.
+//
 // localQueueName is the tenant's LocalQueue (by convention,
 // "<tenant>-queue", matching the finance-queue/research-queue pattern
 // already created manually — a future TenantController change could
@@ -81,6 +106,7 @@ func restrictedSecurityContext() *corev1.SecurityContext {
 func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *batchv1.Job {
 	cpu, memory := CPURequest(isvc.Spec.WorkloadClass)
 	priorityClass := PriorityClassForWorkloadClass(isvc.Spec.WorkloadClass)
+	replicas := ReplicaCount(isvc)
 
 	backoffLimit := int32(0) // don't retry — a failed InferenceService job should surface as failed, not silently retry
 	suspend := true          // Kueue unsuspends this once admitted; never start unsuspended
@@ -107,6 +133,8 @@ func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *b
 		Spec: batchv1.JobSpec{
 			Suspend:      &suspend,
 			BackoffLimit: &backoffLimit,
+			Completions:  int32Ptr(replicas),
+			Parallelism:  int32Ptr(replicas),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -149,3 +177,4 @@ func BuildJob(isvc *platformv1alpha1.InferenceService, localQueueName string) *b
 
 func boolPtr(b bool) *bool    { return &b }
 func int64Ptr(i int64) *int64 { return &i }
+func int32Ptr(i int32) *int32 { return &i }

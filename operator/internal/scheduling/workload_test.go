@@ -133,3 +133,65 @@ func TestBuildJob_SatisfiesRestrictedPodSecurity(t *testing.T) {
 		t.Error("expected non-zero runAsUser — busybox defaults to root and RunAsNonRoot alone is not enough")
 	}
 }
+
+func TestReplicaCount(t *testing.T) {
+	one := int32(1)
+	four := int32(4)
+	zero := int32(0)
+	negative := int32(-3)
+
+	cases := []struct {
+		name     string
+		replicas *int32
+		want     int32
+	}{
+		{"unset defaults to 1", nil, 1},
+		{"explicit 1", &one, 1},
+		{"explicit 4", &four, 4},
+		{"zero falls back to 1", &zero, 1},
+		{"negative falls back to 1", &negative, 1},
+	}
+	for _, c := range cases {
+		isvc := &platformv1alpha1.InferenceService{
+			Spec: platformv1alpha1.InferenceServiceSpec{Replicas: c.replicas},
+		}
+		got := ReplicaCount(isvc)
+		if got != c.want {
+			t.Errorf("%s: expected %d, got %d", c.name, c.want, got)
+		}
+	}
+}
+
+func TestBuildJob_GangScheduling(t *testing.T) {
+	four := int32(4)
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "gang-test", Namespace: "finance", UID: types.UID("gang-1")},
+		Spec: platformv1alpha1.InferenceServiceSpec{
+			WorkloadClass: "batch",
+			Replicas:      &four,
+		},
+	}
+	job := BuildJob(isvc, "finance-queue")
+
+	if job.Spec.Completions == nil || *job.Spec.Completions != 4 {
+		t.Errorf("expected completions=4, got %v", job.Spec.Completions)
+	}
+	if job.Spec.Parallelism == nil || *job.Spec.Parallelism != 4 {
+		t.Errorf("expected parallelism=4, got %v", job.Spec.Parallelism)
+	}
+}
+
+func TestBuildJob_DefaultsToSinglePod(t *testing.T) {
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "single-test", Namespace: "finance", UID: types.UID("single-1")},
+		Spec:       platformv1alpha1.InferenceServiceSpec{WorkloadClass: "interactive"},
+	}
+	job := BuildJob(isvc, "finance-queue")
+
+	if job.Spec.Completions == nil || *job.Spec.Completions != 1 {
+		t.Errorf("expected completions=1 by default, got %v", job.Spec.Completions)
+	}
+	if job.Spec.Parallelism == nil || *job.Spec.Parallelism != 1 {
+		t.Errorf("expected parallelism=1 by default, got %v", job.Spec.Parallelism)
+	}
+}
