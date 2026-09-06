@@ -1,0 +1,69 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: cpu-default
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: finance-cluster-queue
+spec:
+  cohortName: cnip-cohort
+  namespaceSelector: {}
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Any
+  resourceGroups:
+  - coveredResources: ["cpu", "memory"]
+    flavors:
+    - name: cpu-default
+      resources:
+      - name: "cpu"
+        nominalQuota: 2
+        borrowingLimit: 2
+      - name: "memory"
+        nominalQuota: 4Gi
+        borrowingLimit: 4Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: research-cluster-queue
+spec:
+  cohortName: cnip-cohort
+  namespaceSelector: {}
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Any
+  resourceGroups:
+  - coveredResources: ["cpu", "memory"]
+    flavors:
+    - name: cpu-default
+      resources:
+      - name: "cpu"
+        nominalQuota: 2
+        borrowingLimit: 2
+      - name: "memory"
+        nominalQuota: 4Gi
+        borrowingLimit: 4Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-interactive
+value: 1000
+description: "Interactive InferenceServices — highest scheduling priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-batch
+value: 333
+description: "Batch InferenceServices — medium scheduling priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: platform-background
+value: 100
+description: "Background InferenceServices — lowest scheduling priority"
