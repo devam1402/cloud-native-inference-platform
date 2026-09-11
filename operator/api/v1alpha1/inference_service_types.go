@@ -29,6 +29,14 @@ type InferenceServiceSpec struct {
 	// created before this field existed keeps working unchanged.
 	// +kubebuilder:validation:Minimum=1
 	Replicas *int32 `json:"replicas,omitempty"`
+	// +optional
+	// GPU requests a single GPU for this workload, dispatched via Kueue
+	// MultiKueue to the external GPU worker cluster rather than scheduled
+	// on cnip-gke directly. Defaults to false (CPU-only) when unset.
+	// Only a boolean for now — this platform currently has exactly one
+	// GPU available; a count field would overclaim capability that does
+	// not yet exist.
+	GPU *bool `json:"gpu,omitempty"`
 
 	// +optional
 	SLO InferenceSLO `json:"slo,omitempty"`

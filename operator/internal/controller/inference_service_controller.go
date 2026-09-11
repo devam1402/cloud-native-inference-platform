@@ -223,6 +223,9 @@ func (r *InferenceServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // everything else is already Ready.
 func (r *InferenceServiceReconciler) reconcileKueueJob(ctx context.Context, isvc *platformv1alpha1.InferenceService) error {
 	localQueueName := isvc.Namespace + "-queue" // matches the finance-queue/research-queue convention
+	if isvc.Spec.GPU != nil && *isvc.Spec.GPU {
+		localQueueName = isvc.Namespace + "-gpu-queue" // dispatched via MultiKueue to the external GPU cluster
+	}
 
 	desired := scheduling.BuildJob(isvc, localQueueName)
 	if err := controllerutil.SetControllerReference(isvc, desired, r.Scheme); err != nil {

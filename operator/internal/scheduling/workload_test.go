@@ -195,3 +195,77 @@ func TestBuildJob_DefaultsToSinglePod(t *testing.T) {
 		t.Errorf("expected parallelism=1 by default, got %v", job.Spec.Parallelism)
 	}
 }
+
+func TestWantsGPU(t *testing.T) {
+	trueVal := true
+	falseVal := false
+
+	cases := []struct {
+		name string
+		gpu  *bool
+		want bool
+	}{
+		{"unset defaults to false", nil, false},
+		{"explicit true", &trueVal, true},
+		{"explicit false", &falseVal, false},
+	}
+	for _, c := range cases {
+		isvc := &platformv1alpha1.InferenceService{
+			Spec: platformv1alpha1.InferenceServiceSpec{GPU: c.gpu},
+		}
+		got := WantsGPU(isvc)
+		if got != c.want {
+			t.Errorf("%s: expected %v, got %v", c.name, c.want, got)
+		}
+	}
+}
+
+func TestBuildJob_GPURequest(t *testing.T) {
+	gpuTrue := true
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "gpu-test", Namespace: "finance", UID: types.UID("gpu-1")},
+		Spec: platformv1alpha1.InferenceServiceSpec{
+			WorkloadClass: "interactive",
+			GPU:           &gpuTrue,
+		},
+	}
+	job := BuildJob(isvc, "finance-gpu-queue")
+
+	container := job.Spec.Template.Spec.Containers[0]
+	gpuLimit := container.Resources.Limits["nvidia.com/gpu"]
+	if gpuLimit.String() != "1" {
+		t.Errorf("expected nvidia.com/gpu limit of 1, got %s", gpuLimit.String())
+	}
+	if container.Image != "nvidia/cuda:12.4.0-base-ubuntu22.04" {
+		t.Errorf("expected CUDA image, got %s", container.Image)
+	}
+	if job.Spec.Template.Spec.RuntimeClassName == nil || *job.Spec.Template.Spec.RuntimeClassName != "nvidia" {
+		t.Error("expected runtimeClassName=nvidia on the pod spec")
+	}
+	if job.Labels[KueueQueueLabel] != "finance-gpu-queue" {
+		t.Errorf("expected queue label finance-gpu-queue, got %s", job.Labels[KueueQueueLabel])
+	}
+}
+
+func TestBuildJob_NonGPUUnaffectedByGPUField(t *testing.T) {
+	gpuFalse := false
+	isvc := &platformv1alpha1.InferenceService{
+		ObjectMeta: metav1.ObjectMeta{Name: "cpu-test", Namespace: "finance", UID: types.UID("cpu-1")},
+		Spec: platformv1alpha1.InferenceServiceSpec{
+			WorkloadClass: "interactive",
+			GPU:           &gpuFalse,
+		},
+	}
+	job := BuildJob(isvc, "finance-queue")
+
+	container := job.Spec.Template.Spec.Containers[0]
+	if container.Image != "busybox:1.36" {
+		t.Errorf("expected busybox image when GPU is false, got %s", container.Image)
+	}
+	if _, hasGPU := container.Resources.Limits["nvidia.com/gpu"]; hasGPU {
+		t.Error("expected no nvidia.com/gpu limit when GPU is false")
+	}
+	if job.Spec.Template.Spec.RuntimeClassName != nil {
+		t.Error("expected no runtimeClassName set for non-GPU workloads")
+	}
+}

@@ -44,6 +44,15 @@ spec:
             type: object
           spec:
             properties:
+              gpu:
+                description: |-
+                  GPU requests a single GPU for this workload, dispatched via Kueue
+                  MultiKueue to the external GPU worker cluster rather than scheduled
+                  on cnip-gke directly. Defaults to false (CPU-only) when unset.
+                  Only a boolean for now — this platform currently has exactly one
+                  GPU available; a count field would overclaim capability that does
+                  not yet exist.
+                type: boolean
               model:
                 type: string
               priority:

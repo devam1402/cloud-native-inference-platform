@@ -127,6 +127,11 @@ func (in *InferenceServiceSpec) DeepCopyInto(out *InferenceServiceSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.GPU != nil {
+		in, out := &in.GPU, &out.GPU
+		*out = new(bool)
+		**out = **in
+	}
 	in.SLO.DeepCopyInto(&out.SLO)
 }
 
