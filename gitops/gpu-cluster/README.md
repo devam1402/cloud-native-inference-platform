@@ -73,3 +73,36 @@ Note: this provider (JarvisLabs) appears to preserve disk/cluster state
 across stop/restart but assigns a new hostname and IP each time — the
 tls-san and kubeconfig steps above will need repeating after any restart
 with the new IP.
+
+## Recovery runbook after a restart (IP changes every boot)
+
+Run in order, on the GPU box first, then the dev machine, then cnip-gke:
+
+    # 1. On the GPU box — clean the stale node entry from the previous IP's hostname
+    kubectl get nodes   # note the NotReady one from before, and the new Ready one
+    kubectl delete node <stale-hostname>
+
+    # 2. On the GPU box — redo the TLS SAN fix for the new IP
+    sudo systemctl stop k3s
+    echo 'tls-san:
+      - "<NEW_IP>"' | sudo tee /etc/rancher/k3s/config.yaml
+    sudo rm -f /var/lib/rancher/k3s/server/tls/dynamic-cert.json
+    sudo systemctl start k3s
+    sleep 15 && kubectl get nodes   # should show Ready
+
+    # 3. On the GPU box — re-export the external kubeconfig
+    cat ~/.kube/config | sed 's|127.0.0.1|<NEW_IP>|' > ~/kubeconfig-external.yaml
+
+    # 4. On the dev machine — copy it over
+    scp -i ~/.ssh/jarvislabs ubuntu@<NEW_IP>:~/kubeconfig-external.yaml ~/gpu-cluster-kubeconfig.yaml
+    KUBECONFIG=~/gpu-cluster-kubeconfig.yaml kubectl get nodes   # verify
+
+    # 5. On the dev machine — update the MultiKueue Secret on cnip-gke
+    #    (this is easy to forget — the Secret still has the OLD kubeconfig
+    #    baked in, so MultiKueue silently can't reach the worker until this runs)
+    kubectl delete secret gpu-cluster-kubeconfig -n kueue-system
+    kubectl create secret generic gpu-cluster-kubeconfig \
+      --from-file=kubeconfig=$HOME/gpu-cluster-kubeconfig.yaml \
+      -n kueue-system
+    kubectl get multikueuecluster gpu-worker-cluster -o yaml | grep -A10 "^status:"
+    # should show status Active:True, message "Connected"

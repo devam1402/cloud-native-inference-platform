@@ -1,0 +1,1 @@
+{"cpu":"24","ephemeral-storage":"101430960Ki","hugepages-1Gi":"0","hugepages-2Mi":"0","memory":"206118100Ki","nvidia.com/gpu":"1","pods":"110"}
