@@ -25740,25 +25740,32 @@ data:
     #  webhookServiceName: ""
     #  webhookSecretName: ""
     integrations:
+      # Trimmed to only what this platform actually uses (BuildJob only
+      # ever creates batch/v1 Jobs). The full default list requires the
+      # corresponding CRDs (Ray, Kubeflow, JobSet, AppWrapper, etc.) to
+      # exist on every cluster Kueue talks to, including MultiKueue
+      # worker clusters — leaving them enabled without those CRDs
+      # installed breaks MultiKueue's connectivity check entirely
+      # ("no matches for kind X"), even though nothing here uses them.
       frameworks:
       - "batch/job"
-      - "kubeflow.org/mpijob"
-      - "ray.io/rayjob"
-      - "ray.io/raycluster"
-      - "ray.io/rayservice"
-      - "jobset.x-k8s.io/jobset"
+      - "pod"
+      # - "kubeflow.org/mpijob"
+      # - "ray.io/rayjob"
+      # - "ray.io/raycluster"
+      # - "ray.io/rayservice"
+      # - "jobset.x-k8s.io/jobset"
       # - "kubeflow.org/paddlejob"
       # - "kubeflow.org/pytorchjob"
       # - "kubeflow.org/tfjob"
       # - "kubeflow.org/xgboostjob"
       # - "kubeflow.org/jaxjob"
-      - "workload.codeflare.dev/appwrapper"
-      - "trainer.kubeflow.org/trainjob"
+      # - "workload.codeflare.dev/appwrapper"
+      # - "trainer.kubeflow.org/trainjob"
       # - "sparkoperator.k8s.io/sparkapplication"
-      - "pod"
-      - "deployment"
-      - "statefulset"
-      - "leaderworkerset.x-k8s.io/leaderworkerset"
+      # - "deployment"
+      # - "statefulset"
+      # - "leaderworkerset.x-k8s.io/leaderworkerset"
     #  externalFrameworks:
     #  - "Foo.v1.example.com"
     #fairSharing:
