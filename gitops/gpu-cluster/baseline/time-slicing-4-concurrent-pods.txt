@@ -1,0 +1,5 @@
+NAME          READY   STATUS      RESTARTS   AGE     IP           NODE           NOMINATED NODE   READINESS GATES
+gpu-slice-a   0/1     Completed   0          9m13s   10.42.0.10   jl-vm-503936   <none>           <none>
+gpu-slice-b   0/1     Completed   0          9m12s   10.42.0.11   jl-vm-503936   <none>           <none>
+gpu-slice-c   0/1     Completed   0          9m11s   10.42.0.12   jl-vm-503936   <none>           <none>
+gpu-slice-d   0/1     Completed   0          9m10s   10.42.0.13   jl-vm-503936   <none>           <none>
