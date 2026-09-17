@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: asia-south1-docker.pkg.dev/cnip-platform-v2/cnip-images/cloud-native-inference-platform
-  newTag: dev
+  digest: sha256:7c8b454e3366c0349e57a7396fc55c0b10f243f5e6f3fe723c0ccf5186037def
