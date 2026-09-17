@@ -67,3 +67,42 @@ metadata:
   name: platform-background
 value: 100
 description: "Background InferenceServices — lowest scheduling priority"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: mig-3g-40gb
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: gpu-cluster-queue
+spec:
+  namespaceSelector: {}
+  admissionChecksStrategy:
+    admissionChecks:
+    - name: gpu-multikueue-check
+      onFlavors:
+      - gpu-default
+      - mig-3g-40gb
+  resourceGroups:
+  - coveredResources:
+    - cpu
+    - memory
+    - nvidia.com/gpu
+    flavors:
+    - name: gpu-default
+      resources:
+      - name: cpu
+        nominalQuota: 24
+      - name: memory
+        nominalQuota: 196Gi
+      - name: nvidia.com/gpu
+        nominalQuota: "1"
+  - coveredResources:
+    - nvidia.com/mig-3g.40gb
+    flavors:
+    - name: mig-3g-40gb
+      resources:
+      - name: nvidia.com/mig-3g.40gb
+        nominalQuota: "2"
