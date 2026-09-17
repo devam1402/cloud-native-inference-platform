@@ -30,6 +30,12 @@ spec:
       kind: ValidatingWebhookConfiguration
     - group: 'apiregistration.k8s.io'
       kind: APIService
+    - group: 'kueue.x-k8s.io'
+      kind: ClusterQueue
+    - group: 'kueue.x-k8s.io'
+      kind: ResourceFlavor
+    - group: 'kueue.x-k8s.io'
+      kind: WorkloadPriorityClass
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
