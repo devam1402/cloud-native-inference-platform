@@ -1,0 +1,94 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: "2026-09-17T11:28:56Z"
+  generation: 2
+  labels:
+    kueue.x-k8s.io/priority-class: platform-interactive
+    kueue.x-k8s.io/queue-name: demo-finance-gpu-queue
+    platform.platform.io/inferenceservice: gpu-final-proof
+  name: gpu-final-proof
+  namespace: demo-finance
+  ownerReferences:
+  - apiVersion: platform.platform.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: InferenceService
+    name: gpu-final-proof
+    uid: e6c1b6e3-fc90-4a6a-8313-5720877a31e3
+  resourceVersion: "1789646522551823006"
+  uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+spec:
+  backoffLimit: 0
+  completionMode: NonIndexed
+  completions: 1
+  managedBy: kueue.x-k8s.io/multikueue
+  manualSelector: false
+  parallelism: 1
+  podReplacementPolicy: TerminatingOrFailed
+  selector:
+    matchLabels:
+      batch.kubernetes.io/controller-uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+  suspend: false
+  template:
+    metadata:
+      annotations:
+        kueue.x-k8s.io/workload: job-gpu-final-proof-1684d
+      labels:
+        batch.kubernetes.io/controller-uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+        batch.kubernetes.io/job-name: gpu-final-proof
+        controller-uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+        job-name: gpu-final-proof
+        kueue.x-k8s.io/cluster-queue-name: gpu-cluster-queue
+        kueue.x-k8s.io/local-queue-name: demo-finance-gpu-queue
+        kueue.x-k8s.io/podset: main
+        platform.platform.io/inferenceservice: gpu-final-proof
+    spec:
+      containers:
+      - command:
+        - nvidia-smi
+        image: nvidia/cuda:12.4.0-base-ubuntu22.04
+        imagePullPolicy: IfNotPresent
+        name: placeholder
+        resources:
+          limits:
+            nvidia.com/mig-3g.40gb: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Never
+      runtimeClassName: nvidia
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  completionTime: "2026-09-17T12:02:02Z"
+  conditions:
+  - lastProbeTime: "2026-09-17T12:01:58Z"
+    lastTransitionTime: "2026-09-17T12:01:58Z"
+    message: Job resumed
+    reason: JobResumed
+    status: "False"
+    type: Suspended
+  - lastProbeTime: "2026-09-17T12:02:02Z"
+    lastTransitionTime: "2026-09-17T12:02:02Z"
+    message: Reached expected number of succeeded pods
+    reason: CompletionsReached
+    status: "True"
+    type: SuccessCriteriaMet
+  - lastProbeTime: "2026-09-17T12:02:02Z"
+    lastTransitionTime: "2026-09-17T12:02:02Z"
+    message: Reached expected number of succeeded pods
+    reason: CompletionsReached
+    status: "True"
+    type: Complete
+  ready: 0
+  startTime: "2026-09-17T12:01:58Z"
+  succeeded: 1
+  terminating: 0
+  uncountedTerminatedPods: {}

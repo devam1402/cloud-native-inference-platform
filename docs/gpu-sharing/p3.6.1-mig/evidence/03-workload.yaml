@@ -1,0 +1,100 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: Workload
+metadata:
+  creationTimestamp: "2026-09-17T11:28:56Z"
+  generation: 1
+  labels:
+    kueue.x-k8s.io/job-uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+  name: job-gpu-final-proof-1684d
+  namespace: demo-finance
+  ownerReferences:
+  - apiVersion: batch/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Job
+    name: gpu-final-proof
+    uid: d8c544ec-09da-4050-a3d9-bf8656a3a3b2
+  resourceVersion: "1789646522635999019"
+  uid: e5521f85-e1f2-44cb-b4a6-1c2c086dd076
+spec:
+  active: true
+  podSets:
+  - count: 1
+    name: main
+    template:
+      metadata:
+        labels:
+          batch.kubernetes.io/job-name: gpu-final-proof
+          platform.platform.io/inferenceservice: gpu-final-proof
+      spec:
+        containers:
+        - command:
+          - nvidia-smi
+          image: nvidia/cuda:12.4.0-base-ubuntu22.04
+          imagePullPolicy: IfNotPresent
+          name: placeholder
+          resources:
+            limits:
+              nvidia.com/mig-3g.40gb: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Never
+        runtimeClassName: nvidia
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    topologyRequest:
+      podIndexLabel: batch.kubernetes.io/job-completion-index
+  priority: 1000
+  priorityClassRef:
+    group: kueue.x-k8s.io
+    kind: WorkloadPriorityClass
+    name: platform-interactive
+  queueName: demo-finance-gpu-queue
+status:
+  admission:
+    clusterQueue: gpu-cluster-queue
+    podSetAssignments:
+    - count: 1
+      flavors:
+        nvidia.com/mig-3g.40gb: mig-3g-40gb
+      name: main
+      resourceUsage:
+        nvidia.com/mig-3g.40gb: "1"
+  admissionChecks:
+  - lastTransitionTime: "2026-09-17T12:01:58Z"
+    message: The workload was admitted on "gpu-worker-cluster"
+    name: gpu-multikueue-check
+    state: Ready
+  clusterName: gpu-worker-cluster
+  conditions:
+  - lastTransitionTime: "2026-09-17T11:50:38Z"
+    message: Quota reserved in ClusterQueue gpu-cluster-queue
+    observedGeneration: 1
+    reason: QuotaReserved
+    status: "True"
+    type: QuotaReserved
+  - lastTransitionTime: "2026-09-17T12:01:58Z"
+    message: The workload is admitted
+    observedGeneration: 1
+    reason: Admitted
+    status: "True"
+    type: Admitted
+  - lastTransitionTime: "2026-09-17T12:02:02Z"
+    message: Reached expected number of succeeded pods
+    observedGeneration: 1
+    reason: Succeeded
+    status: "True"
+    type: Finished
+  - lastTransitionTime: "2026-09-17T11:28:56Z"
+    message: Not all pods are ready or succeeded
+    observedGeneration: 1
+    reason: WaitForStart
+    status: "False"
+    type: PodsReady

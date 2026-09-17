@@ -1,0 +1,63 @@
+apiVersion: platform.platform.io/v1alpha1
+kind: InferenceService
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"platform.platform.io/v1alpha1","kind":"InferenceService","metadata":{"annotations":{},"name":"gpu-final-proof","namespace":"demo-finance"},"spec":{"gpu":true,"model":"qwen-7b","resourceProfile":"protected-gpu","workloadClass":"interactive"}}
+    platform.platform.io/derived-priority: "100"
+    platform.platform.io/fairness-id: demo-finance
+    platform.platform.io/reconcile: "1789644532"
+    platform.platform.io/tenant: demo-finance
+  creationTimestamp: "2026-09-11T10:41:39Z"
+  generation: 2
+  name: gpu-final-proof
+  namespace: demo-finance
+  resourceVersion: "1789644536780063020"
+  uid: e6c1b6e3-fc90-4a6a-8313-5720877a31e3
+spec:
+  gpu: true
+  gpuType: mig-3g.40gb
+  model: qwen-7b
+  resourceProfile: protected-gpu
+  slo: {}
+  workloadClass: interactive
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: ModelVerified
+    status: "True"
+    type: ModelReady
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: TenantFound
+    status: "True"
+    type: TenantResolved
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: ProfileFound
+    status: "True"
+    type: ResourceProfileResolved
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: WithinEnvelope
+    status: "True"
+    type: CapacityAvailable
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: InferenceServiceObserved
+    status: "True"
+    type: Accepted
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: AllDependenciesResolved
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2026-09-11T10:41:39Z"
+    message: ""
+    reason: JobReconciled
+    status: "True"
+    type: WorkloadReady
+  derivedPriority: 100
+  observedGeneration: 2
+  phase: Ready
