@@ -129,8 +129,17 @@ func gpuSecurityContext() *corev1.SecurityContext {
 //	MIG-7bf8cfac-...
 //
 // That is intentionally left to Kubernetes.
+func ModelURI(model *platformv1alpha1.Model) string {
+	if model == nil {
+		return ""
+	}
+
+	return model.Spec.Source.URI
+}
+
 func BuildJob(
 	isvc *platformv1alpha1.InferenceService,
+	model *platformv1alpha1.Model,
 	localQueueName string,
 ) *batchv1.Job {
 	priorityClass := PriorityClassForWorkloadClass(isvc.Spec.WorkloadClass)
@@ -153,9 +162,16 @@ func BuildJob(
 		gpuResourceName := GPUResourceName(isvc)
 
 		container = corev1.Container{
-			Name:    "placeholder",
-			Image:   "nvidia/cuda:12.4.0-base-ubuntu22.04",
-			Command: []string{"nvidia-smi"},
+			Name:  "vllm",
+			Image: "vllm/vllm-openai:v0.29.0",
+			Args: []string{
+				"--model",
+				ModelURI(model),
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000",
+			},
 
 			SecurityContext: gpuSecurityContext(),
 

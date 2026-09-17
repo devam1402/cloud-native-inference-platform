@@ -9,6 +9,17 @@ import (
 	platformv1alpha1 "github.com/devam1402/cloud-native-inference-platform/operator/api/v1alpha1"
 )
 
+func testModel() *platformv1alpha1.Model {
+	return &platformv1alpha1.Model{
+		Spec: platformv1alpha1.ModelSpec{
+			Source: platformv1alpha1.ModelSource{
+				Type: "huggingface",
+				URI:  "Qwen/Qwen2.5-0.5B-Instruct",
+			},
+		},
+	}
+}
+
 func TestCPURequest(t *testing.T) {
 	cases := []struct {
 		class      string
@@ -56,7 +67,7 @@ func TestBuildJob(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-queue")
+	job := BuildJob(isvc, testModel(), "finance-queue")
 
 	if job.Name != "test-isvc" {
 		t.Errorf("expected job name test-isvc, got %s", job.Name)
@@ -144,7 +155,7 @@ func TestBuildJob_PriorityClassLabel(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-queue")
+	job := BuildJob(isvc, testModel(), "finance-queue")
 
 	if job.Labels[KueuePriorityClassLabel] != "platform-background" {
 		t.Errorf(
@@ -166,7 +177,7 @@ func TestBuildJob_SatisfiesRestrictedPodSecurity(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-queue")
+	job := BuildJob(isvc, testModel(), "finance-queue")
 
 	podSpec := job.Spec.Template.Spec
 
@@ -228,7 +239,7 @@ func TestBuildJob_GPURequest(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-gpu-queue")
+	job := BuildJob(isvc, testModel(), "finance-gpu-queue")
 
 	container := job.Spec.Template.Spec.Containers[0]
 
@@ -241,9 +252,9 @@ func TestBuildJob_GPURequest(t *testing.T) {
 		)
 	}
 
-	if container.Image != "nvidia/cuda:12.4.0-base-ubuntu22.04" {
+	if container.Image != "vllm/vllm-openai:v0.29.0" {
 		t.Errorf(
-			"expected CUDA image, got %s",
+			"expected vLLM image, got %s",
 			container.Image,
 		)
 	}
@@ -280,7 +291,7 @@ func TestBuildJob_MIGRequest(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-gpu-queue")
+	job := BuildJob(isvc, testModel(), "finance-gpu-queue")
 
 	container := job.Spec.Template.Spec.Containers[0]
 
@@ -335,7 +346,7 @@ func TestBuildJob_NonGPUUnaffectedByGPUField(t *testing.T) {
 		},
 	}
 
-	job := BuildJob(isvc, "finance-queue")
+	job := BuildJob(isvc, testModel(), "finance-queue")
 
 	container := job.Spec.Template.Spec.Containers[0]
 

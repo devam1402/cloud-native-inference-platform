@@ -35,8 +35,12 @@ type InferenceServiceReconciler struct {
 // +kubebuilder:rbac:groups=platform.platform.io,resources=models,verbs=get;list;watch
 // +kubebuilder:rbac:groups=platform.platform.io,resources=tenants,verbs=get;list;watch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 
-func (r *InferenceServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *InferenceServiceReconciler) Reconcile(
+	ctx context.Context,
+	req ctrl.Request,
+) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	var isvc platformv1alpha1.InferenceService
@@ -46,123 +50,277 @@ func (r *InferenceServiceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	var derivedPriority int32
 
+	// Resolve Model.
 	var model platformv1alpha1.Model
 	var modelState string
-	err := r.Get(ctx, types.NamespacedName{Name: isvc.Spec.Model, Namespace: isvc.Namespace}, &model)
+
+	err := r.Get(
+		ctx,
+		types.NamespacedName{
+			Name:      isvc.Spec.Model,
+			Namespace: isvc.Namespace,
+		},
+		&model,
+	)
+
 	switch {
 	case apierrors.IsNotFound(err):
 		modelState = "notfound"
 	case err != nil:
-		return ctrl.Result{}, fmt.Errorf("getting model %q: %w", isvc.Spec.Model, err)
+		return ctrl.Result{}, fmt.Errorf(
+			"getting model %q: %w",
+			isvc.Spec.Model,
+			err,
+		)
 	case meta.IsStatusConditionTrue(model.Status.Conditions, "Ready"):
 		modelState = "ready"
 	default:
 		modelState = "notready"
 	}
 
+	// Resolve Tenant.
 	var tenant platformv1alpha1.Tenant
 	var tenantState string
-	err = r.Get(ctx, types.NamespacedName{Name: isvc.Namespace}, &tenant)
+
+	err = r.Get(
+		ctx,
+		types.NamespacedName{
+			Name: isvc.Namespace,
+		},
+		&tenant,
+	)
+
 	switch {
 	case apierrors.IsNotFound(err):
 		tenantState = "notfound"
 	case err != nil:
-		return ctrl.Result{}, fmt.Errorf("getting tenant %q: %w", isvc.Namespace, err)
+		return ctrl.Result{}, fmt.Errorf(
+			"getting tenant %q: %w",
+			isvc.Namespace,
+			err,
+		)
 	default:
 		tenantState = "found"
-		derivedPriority = priority.Calculate(tenant.Spec.Priority.Default, isvc.Spec.WorkloadClass, isvc.Spec.Priority)
+		derivedPriority = priority.Calculate(
+			tenant.Spec.Priority.Default,
+			isvc.Spec.WorkloadClass,
+			isvc.Spec.Priority,
+		)
 	}
 
+	// Resolve resource profile.
 	_, profileErr := resourceprofile.Resolve(isvc.Spec.ResourceProfile)
 
+	// Check capacity only when the model and resource profile are valid.
 	var capacityErr error
+
 	if modelState == "ready" && profileErr == nil {
-		envelope, cErr := capacityenvelope.Check(isvc.Spec.Model, isvc.Spec.ResourceProfile)
+		envelope, cErr := capacityenvelope.Check(
+			isvc.Spec.Model,
+			isvc.Spec.ResourceProfile,
+		)
+
 		if cErr != nil {
 			capacityErr = cErr
 		} else if !envelope.Available {
-			capacityErr = fmt.Errorf("no capacity available for model %q on profile %q", isvc.Spec.Model, isvc.Spec.ResourceProfile)
+			capacityErr = fmt.Errorf(
+				"no capacity available for model %q on profile %q",
+				isvc.Spec.Model,
+				isvc.Spec.ResourceProfile,
+			)
 		}
 	}
 
 	var modelErr, tenantErr error
+
 	if modelState != "ready" {
 		if modelState == "notfound" {
-			modelErr = fmt.Errorf("model %q not found", isvc.Spec.Model)
+			modelErr = fmt.Errorf(
+				"model %q not found",
+				isvc.Spec.Model,
+			)
 		} else {
-			modelErr = fmt.Errorf("model %q is not ready", isvc.Spec.Model)
+			modelErr = fmt.Errorf(
+				"model %q is not ready",
+				isvc.Spec.Model,
+			)
 		}
 	}
+
 	if tenantState != "found" {
-		tenantErr = fmt.Errorf("tenant %q not found", isvc.Namespace)
+		tenantErr = fmt.Errorf(
+			"tenant %q not found",
+			isvc.Namespace,
+		)
 	}
 
-	changed, err := r.updateStatus(ctx, &isvc, derivedPriority, modelErr, tenantErr, profileErr, capacityErr)
+	changed, err := r.updateStatus(
+		ctx,
+		&isvc,
+		derivedPriority,
+		modelErr,
+		tenantErr,
+		profileErr,
+		capacityErr,
+	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if modelErr != nil || tenantErr != nil || profileErr != nil || capacityErr != nil {
-		// The Model watch below normally makes this poll unnecessary once
-		// the model becomes ready, but this stays as a safety net for
-		// cases the watch doesn't cover (e.g. tenant/profile/capacity
-		// changes with no corresponding watch yet).
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	if modelErr != nil ||
+		tenantErr != nil ||
+		profileErr != nil ||
+		capacityErr != nil {
+
+		return ctrl.Result{
+			RequeueAfter: 10 * time.Second,
+		}, nil
 	}
 
-	jobErr := r.reconcileKueueJob(ctx, &isvc)
-	if err := r.updateWorkloadCondition(ctx, &isvc, jobErr); err != nil {
+	// Model is available here, so pass it explicitly.
+	jobErr := r.reconcileKueueJob(
+		ctx,
+		&isvc,
+		&model,
+	)
+
+	if err := r.updateWorkloadCondition(
+		ctx,
+		&isvc,
+		jobErr,
+	); err != nil {
 		return ctrl.Result{}, err
 	}
+
 	if jobErr != nil {
 		return ctrl.Result{}, jobErr
 	}
 
 	if changed {
-		log.Info("inferenceservice reconciled", "inferenceservice", isvc.Name, "priority", derivedPriority)
+		log.Info(
+			"inferenceservice reconciled",
+			"inferenceservice",
+			isvc.Name,
+			"priority",
+			derivedPriority,
+		)
 	}
+
 	return ctrl.Result{}, nil
 }
 
-func (r *InferenceServiceReconciler) updateStatus(ctx context.Context, isvc *platformv1alpha1.InferenceService, derivedPriority int32, modelErr, tenantErr, profileErr, capacityErr error) (bool, error) {
-	newConditions := append([]metav1.Condition{}, isvc.Status.Conditions...)
+func (r *InferenceServiceReconciler) updateStatus(
+	ctx context.Context,
+	isvc *platformv1alpha1.InferenceService,
+	derivedPriority int32,
+	modelErr,
+	tenantErr,
+	profileErr,
+	capacityErr error,
+) (bool, error) {
 
-	setCond := func(condType string, err error, okReason, failReason string) {
+	newConditions := append(
+		[]metav1.Condition{},
+		isvc.Status.Conditions...,
+	)
+
+	setCond := func(
+		condType string,
+		err error,
+		okReason,
+		failReason string,
+	) {
 		status := metav1.ConditionTrue
 		reason := okReason
 		msg := ""
+
 		if err != nil {
 			status = metav1.ConditionFalse
 			reason = failReason
 			msg = err.Error()
 		}
-		meta.SetStatusCondition(&newConditions, metav1.Condition{
-			Type: condType, Status: status, Reason: reason, Message: msg,
-		})
+
+		meta.SetStatusCondition(
+			&newConditions,
+			metav1.Condition{
+				Type:    condType,
+				Status:  status,
+				Reason:  reason,
+				Message: msg,
+			},
+		)
 	}
 
-	setCond("ModelReady", modelErr, "ModelVerified", "ModelNotReady")
-	setCond("TenantResolved", tenantErr, "TenantFound", "TenantNotFound")
-	setCond("ResourceProfileResolved", profileErr, "ProfileFound", "ProfileNotFound")
-	setCond("CapacityAvailable", capacityErr, "WithinEnvelope", "CapacityUnavailable")
+	setCond(
+		"ModelReady",
+		modelErr,
+		"ModelVerified",
+		"ModelNotReady",
+	)
 
-	ready := modelErr == nil && tenantErr == nil && profileErr == nil && capacityErr == nil
+	setCond(
+		"TenantResolved",
+		tenantErr,
+		"TenantFound",
+		"TenantNotFound",
+	)
+
+	setCond(
+		"ResourceProfileResolved",
+		profileErr,
+		"ProfileFound",
+		"ProfileNotFound",
+	)
+
+	setCond(
+		"CapacityAvailable",
+		capacityErr,
+		"WithinEnvelope",
+		"CapacityUnavailable",
+	)
+
+	ready :=
+		modelErr == nil &&
+			tenantErr == nil &&
+			profileErr == nil &&
+			capacityErr == nil
+
 	var readyErr error
+
 	if !ready {
-		readyErr = fmt.Errorf("not all dependencies satisfied")
+		readyErr = fmt.Errorf(
+			"not all dependencies satisfied",
+		)
 	}
-	setCond("Accepted", nil, "InferenceServiceObserved", "")
-	setCond("Ready", readyErr, "AllDependenciesResolved", "DependenciesNotReady")
+
+	setCond(
+		"Accepted",
+		nil,
+		"InferenceServiceObserved",
+		"",
+	)
+
+	setCond(
+		"Ready",
+		readyErr,
+		"AllDependenciesResolved",
+		"DependenciesNotReady",
+	)
 
 	newPhase := "Pending"
+
 	if ready {
 		newPhase = "Ready"
 	}
 
-	unchanged := statusUnchanged(isvc.Status.Conditions, newConditions) &&
-		isvc.Status.Phase == newPhase &&
-		isvc.Status.DerivedPriority == derivedPriority &&
-		isvc.Status.ObservedGeneration == isvc.Generation
+	unchanged :=
+		statusUnchanged(
+			isvc.Status.Conditions,
+			newConditions,
+		) &&
+			isvc.Status.Phase == newPhase &&
+			isvc.Status.DerivedPriority == derivedPriority &&
+			isvc.Status.ObservedGeneration == isvc.Generation
 
 	if unchanged {
 		return false, nil
@@ -177,94 +335,161 @@ func (r *InferenceServiceReconciler) updateStatus(ctx context.Context, isvc *pla
 }
 
 // mapModelToInferenceServices maps a Model change to reconcile requests
-// for every InferenceService in the same namespace that references it —
-// this is what makes an InferenceService notice a model becoming Ready
-// immediately, instead of waiting up to 10s for the next poll.
-func (r *InferenceServiceReconciler) mapModelToInferenceServices(ctx context.Context, obj client.Object) []reconcile.Request {
+// for every InferenceService in the same namespace that references it.
+func (r *InferenceServiceReconciler) mapModelToInferenceServices(
+	ctx context.Context,
+	obj client.Object,
+) []reconcile.Request {
+
 	model, ok := obj.(*platformv1alpha1.Model)
 	if !ok {
 		return nil
 	}
 
 	var list platformv1alpha1.InferenceServiceList
-	if err := r.List(ctx, &list, client.InNamespace(model.Namespace)); err != nil {
+
+	if err := r.List(
+		ctx,
+		&list,
+		client.InNamespace(model.Namespace),
+	); err != nil {
 		return nil
 	}
 
 	var requests []reconcile.Request
+
 	for _, isvc := range list.Items {
 		if isvc.Spec.Model == model.Name {
-			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: isvc.Name, Namespace: isvc.Namespace},
-			})
+			requests = append(
+				requests,
+				reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      isvc.Name,
+						Namespace: isvc.Namespace,
+					},
+				},
+			)
 		}
 	}
+
 	return requests
 }
 
-func (r *InferenceServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *InferenceServiceReconciler) SetupWithManager(
+	mgr ctrl.Manager,
+) error {
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&platformv1alpha1.InferenceService{}).
 		Watches(
 			&platformv1alpha1.Model{},
-			handler.EnqueueRequestsFromMapFunc(r.mapModelToInferenceServices),
+			handler.EnqueueRequestsFromMapFunc(
+				r.mapModelToInferenceServices,
+			),
 		).
 		Named("inferenceservice").
 		Complete(r)
 }
 
-// reconcileKueueJob creates or updates the Kueue-admissible Job backing
-// this InferenceService, once Model/Tenant/Profile/Capacity have all
-// resolved successfully. Kept separate from updateStatus's error-folding
-// pattern deliberately — WorkloadReady is reported as its own condition,
-// same "independent, own condition" discipline TenantController uses for
-// ServiceAccount/RBAC/NetworkPolicy, rather than complicating
-// updateStatus's signature for a concern that only applies once
-// everything else is already Ready.
-func (r *InferenceServiceReconciler) reconcileKueueJob(ctx context.Context, isvc *platformv1alpha1.InferenceService) error {
-	localQueueName := isvc.Namespace + "-queue" // matches the finance-queue/research-queue convention
+// reconcileKueueJob creates the Kueue-admissible Job backing
+// this InferenceService.
+func (r *InferenceServiceReconciler) reconcileKueueJob(
+	ctx context.Context,
+	isvc *platformv1alpha1.InferenceService,
+	model *platformv1alpha1.Model,
+) error {
+
+	localQueueName := isvc.Namespace + "-queue"
+
 	if isvc.Spec.GPU != nil && *isvc.Spec.GPU {
-		localQueueName = isvc.Namespace + "-gpu-queue" // dispatched via MultiKueue to the external GPU cluster
+		localQueueName = isvc.Namespace + "-gpu-queue"
 	}
 
-	desired := scheduling.BuildJob(isvc, localQueueName)
-	if err := controllerutil.SetControllerReference(isvc, desired, r.Scheme); err != nil {
-		return fmt.Errorf("setting owner reference on job: %w", err)
+	desired := scheduling.BuildJob(
+		isvc,
+		model,
+		localQueueName,
+	)
+
+	if err := controllerutil.SetControllerReference(
+		isvc,
+		desired,
+		r.Scheme,
+	); err != nil {
+		return fmt.Errorf(
+			"setting owner reference on job: %w",
+			err,
+		)
 	}
 
 	var existing batchv1.Job
-	err := r.Get(ctx, types.NamespacedName{Name: desired.Name, Namespace: desired.Namespace}, &existing)
+
+	err := r.Get(
+		ctx,
+		types.NamespacedName{
+			Name:      desired.Name,
+			Namespace: desired.Namespace,
+		},
+		&existing,
+	)
+
 	if apierrors.IsNotFound(err) {
 		return r.Create(ctx, desired)
 	}
+
 	if err != nil {
-		return fmt.Errorf("getting existing job: %w", err)
+		return fmt.Errorf(
+			"getting existing job: %w",
+			err,
+		)
 	}
-	// Job specs are largely immutable once created (pod template fields
-	// can't be patched after creation) — for P3's scope, an already-
-	// created Job is left alone rather than attempting an update that
-	// the API server would reject anyway.
+
+	// Job pod templates are largely immutable after creation.
+	// For the current P3.6 implementation, leave an existing Job
+	// unchanged rather than attempting an invalid pod-template update.
 	return nil
 }
 
-func (r *InferenceServiceReconciler) updateWorkloadCondition(ctx context.Context, isvc *platformv1alpha1.InferenceService, jobErr error) error {
+func (r *InferenceServiceReconciler) updateWorkloadCondition(
+	ctx context.Context,
+	isvc *platformv1alpha1.InferenceService,
+	jobErr error,
+) error {
+
 	status := metav1.ConditionTrue
 	reason := "JobReconciled"
 	msg := ""
+
 	if jobErr != nil {
 		status = metav1.ConditionFalse
 		reason = "JobError"
 		msg = jobErr.Error()
 	}
 
-	newConditions := append([]metav1.Condition{}, isvc.Status.Conditions...)
-	meta.SetStatusCondition(&newConditions, metav1.Condition{
-		Type: "WorkloadReady", Status: status, Reason: reason, Message: msg,
-	})
+	newConditions := append(
+		[]metav1.Condition{},
+		isvc.Status.Conditions...,
+	)
 
-	if statusUnchanged(isvc.Status.Conditions, newConditions) {
+	meta.SetStatusCondition(
+		&newConditions,
+		metav1.Condition{
+			Type:    "WorkloadReady",
+			Status:  status,
+			Reason:  reason,
+			Message: msg,
+		},
+	)
+
+	if statusUnchanged(
+		isvc.Status.Conditions,
+		newConditions,
+	) {
 		return nil
 	}
+
 	isvc.Status.Conditions = newConditions
+
 	return r.Status().Update(ctx, isvc)
+
 }
