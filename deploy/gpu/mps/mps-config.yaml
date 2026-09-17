@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  mps.yaml: |
+    version: v1
+    sharing:
+      mps:
+        resources:
+        - name: nvidia.com/gpu
+          replicas: 4
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2026-09-13T14:41:40Z"
+  name: mps-config
+  namespace: kube-system
+  resourceVersion: "15681"
+  uid: 0246bf4f-36b1-4963-98d1-e178fc11bd56

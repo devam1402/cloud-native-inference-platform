@@ -21,6 +21,7 @@ type InferenceServiceSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=stateless;cache-affine;session-affine;long-generation
 	Statefulness string `json:"statefulness,omitempty"`
+
 	// +optional
 	// Replicas is the number of pods this workload needs, admitted
 	// atomically as a gang by Kueue — either all Replicas get quota
@@ -29,14 +30,23 @@ type InferenceServiceSpec struct {
 	// created before this field existed keeps working unchanged.
 	// +kubebuilder:validation:Minimum=1
 	Replicas *int32 `json:"replicas,omitempty"`
+
 	// +optional
-	// GPU requests a single GPU for this workload, dispatched via Kueue
-	// MultiKueue to the external GPU worker cluster rather than scheduled
-	// on cnip-gke directly. Defaults to false (CPU-only) when unset.
-	// Only a boolean for now — this platform currently has exactly one
-	// GPU available; a count field would overclaim capability that does
-	// not yet exist.
+	// GPU requests GPU-backed execution for this workload, dispatched
+	// via Kueue MultiKueue to the external GPU worker cluster rather
+	// than scheduled on cnip-gke directly. Defaults to false when unset.
 	GPU *bool `json:"gpu,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:Enum=full;mig-3g.40gb
+	// GPUType selects the GPU resource exposed to Kubernetes.
+	//
+	// "full" preserves the existing nvidia.com/gpu behavior.
+	//
+	// "mig-3g.40gb" requests one NVIDIA H100 MIG slice.
+	//
+	// GPUType is only meaningful when GPU is true.
+	GPUType string `json:"gpuType,omitempty"`
 
 	// +optional
 	SLO InferenceSLO `json:"slo,omitempty"`

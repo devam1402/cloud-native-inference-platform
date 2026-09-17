@@ -46,13 +46,23 @@ spec:
             properties:
               gpu:
                 description: |-
-                  GPU requests a single GPU for this workload, dispatched via Kueue
-                  MultiKueue to the external GPU worker cluster rather than scheduled
-                  on cnip-gke directly. Defaults to false (CPU-only) when unset.
-                  Only a boolean for now — this platform currently has exactly one
-                  GPU available; a count field would overclaim capability that does
-                  not yet exist.
+                  GPU requests GPU-backed execution for this workload, dispatched
+                  via Kueue MultiKueue to the external GPU worker cluster rather
+                  than scheduled on cnip-gke directly. Defaults to false when unset.
                 type: boolean
+              gpuType:
+                description: |-
+                  GPUType selects the GPU resource exposed to Kubernetes.
+
+                  "full" preserves the existing nvidia.com/gpu behavior.
+
+                  "mig-3g.40gb" requests one NVIDIA H100 MIG slice.
+
+                  GPUType is only meaningful when GPU is true.
+                enum:
+                - full
+                - mig-3g.40gb
+                type: string
               model:
                 type: string
               priority:
