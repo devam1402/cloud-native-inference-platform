@@ -6,6 +6,7 @@ resources:
 - ../manager
 - ../webhook
 - ../certmanager
+- metrics_service.yaml
 
 namePrefix: operator-
 
